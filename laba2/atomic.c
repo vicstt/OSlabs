@@ -12,8 +12,7 @@ typedef struct {
     int start, end;     
 } ThreadData;
 
-atomic_int active_threads_atomic = 0;  
-int max_threads_atomic = 4;          
+atomic_int active_threads_atomic = 0;         
 
 void *gauss_elimination_atomic(void *arg) {
     ThreadData *data = (ThreadData *)arg;
@@ -22,22 +21,19 @@ void *gauss_elimination_atomic(void *arg) {
     double *b = data->b;
 
     for (int k = 0; k < n; k++) {
-        if (atomic_fetch_add(&active_threads_atomic, 1) < max_threads_atomic) {
-            for (int i = data->start; i < data->end; i++) {
-                if (i > k) {  
-                    double factor = A[i][k] / A[k][k];
-                    for (int j = k; j < n; j++) {
-                        A[i][j] -= factor * A[k][j];
-                    }
-                    b[i] -= factor * b[k];
-                }
-            }
+        atomic_fetch_add(&active_threads_atomic, 1); 
 
-            atomic_fetch_sub(&active_threads_atomic, 1);
-        } else {
-            atomic_fetch_sub(&active_threads_atomic, 1);
-            k--;  
+        for (int i = data->start; i < data->end; i++) {
+            if (i > k) {  
+                double factor = A[i][k] / A[k][k];
+                for (int j = k; j < n; j++) {
+                    A[i][j] -= factor * A[k][j];
+                }
+                b[i] -= factor * b[k];
+            }
         }
+
+        atomic_fetch_sub(&active_threads_atomic, 1); 
     }
 
     pthread_exit(NULL);
@@ -55,11 +51,11 @@ void back_substitution(int n, double **A, double *b, double *x) {
 int main(int argc, char *argv[]) {
     if (argc < 3) {
         printf("Использование: %s <размер матрицы> <максимальное количество потоков>\n", argv[0]);
-        return 1;
+        exit(EXIT_FAILURE);
     }
 
     int n = atoi(argv[1]);           
-    max_threads_atomic = atoi(argv[2]);  
+    int max_threads_atomic = atoi(argv[2]);  
 
     double **A = malloc(n * sizeof(double *));
     double *b = malloc(n * sizeof(double));
