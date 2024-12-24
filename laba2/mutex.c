@@ -16,25 +16,27 @@ typedef struct {
 
 pthread_mutex_t mutex; 
 
-void *gauss_elimination_mutex(void *arg) {
-    ThreadData *data = (ThreadData *)arg;
+void* gauss_elimination_mutex(void* arg) {
+    ThreadData* data = (ThreadData*)arg;
     int n = data->n;
     double **A = data->A;
     double *b = data->b;
 
     for (int k = 0; k < n; k++) {
         for (int i = data->start; i < data->end; i++) {
-            if (i > k) {  
+            if (i > k) {
                 double factor = A[i][k] / A[k][k];
+                pthread_mutex_lock(&mutex); 
+
                 for (int j = k; j < n; j++) {
                     A[i][j] -= factor * A[k][j];
                 }
                 b[i] -= factor * b[k];
+                pthread_mutex_unlock(&mutex);
             }
         }
     }
-
-    pthread_exit(NULL);
+    return NULL;
 }
 
 void back_substitution(int n, double **A, double *b, double *x) {
