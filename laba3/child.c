@@ -1,74 +1,63 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <sys/mman.h>
-#include <fcntl.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
 #include <semaphore.h>
+#include <unistd.h>
+#include <unistd.h>
+#include <fcntl.h>
 
-#define SHM_SIZE 4096
-#define SEM_NAME "/semaphore"
+#define SEM_NAME "/my_semaphore"  
 
 int main(int argc, char *argv[]) {
-    if (argc < 2) {
-        fprintf(stderr, "Необходимо указать имя файла в качестве аргумента.\n");
-        exit(EXIT_FAILURE);
+    if (argc != 3) {
+        fprintf(stderr, "Использование: %s <shm_id> <имя_файла>\n", argv[0]);
+        exit(1);
     }
 
-    int shm_fd = shm_open("/shared_memory", O_RDWR, 0666);
-    if (shm_fd == -1) {
-        perror("shm_open");
-        exit(EXIT_FAILURE);
-    }
+    int shm_id = atoi(argv[1]);  
+    char *filename = argv[2];   
 
-    void *shm_ptr = mmap(NULL, SHM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
-    if (shm_ptr == MAP_FAILED) {
-        perror("mmap");
-        exit(EXIT_FAILURE);
-    }
-
-    sem_t *sem = sem_open(SEM_NAME, 0);
-    if (sem == SEM_FAILED) {
+    sem_t *semaphore = sem_open(SEM_NAME, 0);
+    if (semaphore == SEM_FAILED) {
         perror("sem_open");
-        exit(EXIT_FAILURE);
+        exit(1);
     }
 
-    char buffer[SHM_SIZE];
-    char *token;
-    int sum;
-    char *filename = argv[1];
-
-    while (1) {
-        sem_wait(sem);
-        strncpy(buffer, (char *)shm_ptr, SHM_SIZE);
-        if (strcmp(buffer, "end") == 0) {
-            sem_post(sem);
-            break;
-        }
-        sem_post(sem);
-
-        if (strspn(buffer, "0123456789 ") == strlen(buffer)) {
-            sum = 0;
-            token = strtok(buffer, " ");
-            while (token != NULL) {
-                sum += atoi(token);
-                token = strtok(NULL, " ");
-            }
-
-            int fd = open(filename, O_WRONLY | O_CREAT | O_APPEND, 0644);
-            if (fd == -1) {
-                perror("open");
-                exit(1);
-            }
-            char sum_str[20];
-            snprintf(sum_str, sizeof(sum_str), "%d\n", sum);
-            write(fd, sum_str, strlen(sum_str));
-            close(fd);
-        }
+    char *shm_ptr = shmat(shm_id, NULL, 0);
+    if (shm_ptr == (char *) -1) {
+        perror("shmat");
+        sem_close(semaphore);
+        exit(1);
     }
 
-    sem_close(sem);
-    munmap(shm_ptr, SHM_SIZE);
+    if (sem_wait(semaphore) == -1) {
+        perror("sem_wait");
+    }
 
+    char *input = shm_ptr;
+    int sum = 0;
+    char *token = strtok(input, " ");
+    
+    while (token != NULL) {
+        sum += atoi(token);
+        token = strtok(NULL, " ");
+    }
+
+    int fd = open(filename, O_WRONLY | O_CREAT | O_APPEND, 0644); 
+    if (fd == -1) {
+        perror("open");
+        shmdt(shm_ptr);
+        sem_close(semaphore);
+        exit(1);
+    }
+    char sum_str[20];
+    snprintf(sum_str, sizeof(sum_str), "%d\n", sum);
+    write(fd, sum_str, strlen(sum_str));
+    close(fd);
+
+    shmdt(shm_ptr);
+    sem_close(semaphore);
     return 0;
 }
