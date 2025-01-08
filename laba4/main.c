@@ -57,7 +57,8 @@ void load_allocator(const char *library_path, Allocator *allocator) {
 
     void *library = dlopen(library_path, RTLD_LOCAL | RTLD_NOW);
     if (!library) {
-        fprintf(stderr, "WARNING: failed to load shared library: %s\n", dlerror());
+        char message[] = "Warning: failed to load shared library\n";
+        write(STDERR_FILENO, message, sizeof(message) - 1);
         allocator->allocator_create = standard_allocator_create;
         allocator->allocator_alloc = standard_allocator_alloc;
         allocator->allocator_free = standard_allocator_free;
@@ -72,7 +73,8 @@ void load_allocator(const char *library_path, Allocator *allocator) {
 
     if (!allocator->allocator_create || !allocator->allocator_alloc ||
         !allocator->allocator_free || !allocator->allocator_destroy) {
-        fprintf(stderr, "Error: failed to load all allocator functions\n");
+        char msg[] = "Error: failed to load all allocator functions\n";
+        write(STDERR_FILENO, msg, sizeof(msg) - 1);
         dlclose(library);
         allocator->allocator_create = standard_allocator_create;
         allocator->allocator_alloc = standard_allocator_alloc;
@@ -108,7 +110,8 @@ int main(int argc, char **argv) {
 
     void *allocator = allocator_api.allocator_create(addr, size);
     if (!allocator) {
-        fprintf(stderr, "Failed to initialize allocator\n");
+        char message[] = "Failed to initialize allocator\n";
+        write(STDERR_FILENO, message, sizeof(message) - 1);
         munmap(addr, size);
         return EXIT_FAILURE;
     }
@@ -121,15 +124,20 @@ int main(int argc, char **argv) {
         blocks[i] = allocator_api.allocator_alloc(allocator, block_sizes[i]);
         if (blocks[i] == NULL) {
             alloc_failed = 1;
-            fprintf(stderr, "Memory allocation failed for block %d\n", i + 1);
+            char alloc_fail_message[] = "Memory allocation failed\n";
+            write(STDERR_FILENO, alloc_fail_message, sizeof(alloc_fail_message) - 1);
             break;
         }
     }
 
     if (!alloc_failed) {
-        printf("Memory allocated successfully\n");
+        char alloc_success_message[] = "Memory allocated successfully\n";
+        write(STDOUT_FILENO, alloc_success_message, sizeof(alloc_success_message) - 1);
         for (int i = 0; i < 12; ++i) {
-            printf("Block %d address: %p\n", i + 1, blocks[i]);
+            char buffer[64];
+            snprintf(buffer, sizeof(buffer), "Block %d address: %p\n", i + 1,
+                     blocks[i]);
+            write(STDOUT_FILENO, buffer, strlen(buffer));
         }
     }
 
@@ -138,11 +146,13 @@ int main(int argc, char **argv) {
             allocator_api.allocator_free(allocator, blocks[i]);
         }
     }
-    printf("Memory freed\n");
+    char free_message[] = "Memory freed\n";
+    write(STDOUT_FILENO, free_message, sizeof(free_message) - 1);
 
     allocator_api.allocator_destroy(allocator);
     munmap(addr, size);
 
-    printf("Program exited successfully\n");
+    char exit_message[] = "Program exited successfully\n";
+    write(STDOUT_FILENO, exit_message, sizeof(exit_message) - 1);
     return EXIT_SUCCESS;
 }

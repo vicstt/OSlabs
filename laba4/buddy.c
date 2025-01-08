@@ -1,5 +1,6 @@
 #include <stddef.h>
 #include <stdio.h>
+#include <unistd.h>
 #include <math.h>
 #include <sys/mman.h> 
 #include <string.h>
@@ -29,7 +30,8 @@ size_t get_level(size_t block_size) {
 
 Allocator* allocator_create(void *const memory, const size_t size) {
     if (size < MIN_BLOCK_SIZE) {
-        fprintf(stderr, "Memory size too small\n");
+        char exit_message[] = "Memory size too small\n";
+        write(STDOUT_FILENO, exit_message, sizeof(exit_message) - 1);
         return NULL;
     }
 
