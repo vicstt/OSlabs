@@ -83,20 +83,9 @@ void load_allocator(const char *library_path, Allocator *allocator) {
     }
 }
 
-size_t round_up_to_power_of_two(size_t size) {
-    if (size < 8) {
-        return 8;
-    }
-    size_t power = 1;
-    while (power < size) {
-        power <<= 1;
-    }
-    return power;
-}
-
 int main(int argc, char **argv) {
     const char *library_path = (argc > 1) ? argv[1] : NULL;
-    Allocator allocator_api;
+    Allocator allocator_api;                           
     load_allocator(library_path, &allocator_api);
 
     size_t size = 4096; 
@@ -135,8 +124,7 @@ int main(int argc, char **argv) {
         write(STDOUT_FILENO, alloc_success_message, sizeof(alloc_success_message) - 1);
         for (int i = 0; i < 12; ++i) {
             char buffer[64];
-            snprintf(buffer, sizeof(buffer), "Block %d address: %p\n", i + 1,
-                     blocks[i]);
+            snprintf(buffer, sizeof(buffer), "Block %d address: %p\n", i + 1, blocks[i]);
             write(STDOUT_FILENO, buffer, strlen(buffer));
         }
     }

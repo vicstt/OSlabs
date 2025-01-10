@@ -6,7 +6,6 @@
 #include <string.h>
 
 #define MIN_BLOCK_SIZE 8
-#define MAX_BLOCK_SIZE (1 << 20)
 #define MAP_ANONYMOUS 0x20
 
 typedef struct Allocator {
@@ -35,8 +34,7 @@ Allocator* allocator_create(void *const memory, const size_t size) {
         return NULL;
     }
 
-    Allocator *allocator = (Allocator *)mmap(
-        NULL, sizeof(Allocator), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+    Allocator *allocator = (Allocator *)mmap(NULL, sizeof(Allocator), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
     if (allocator == MAP_FAILED) {
         perror("mmap for allocator failed");
         return NULL;
@@ -46,8 +44,7 @@ Allocator* allocator_create(void *const memory, const size_t size) {
     allocator->size = size;
     allocator->num_levels = get_level(size) + 1;
 
-    allocator->free_lists = (void **)mmap(
-        NULL, allocator->num_levels * sizeof(void *), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+    allocator->free_lists = (void **)mmap(NULL, allocator->num_levels * sizeof(void *), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
     if (allocator->free_lists == MAP_FAILED) {
         perror("mmap for free_lists failed");
         munmap(allocator, sizeof(Allocator));
